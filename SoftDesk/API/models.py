@@ -8,7 +8,7 @@ class Project(models.Model):
     title = models.CharField(max_length=255)
     description = models.CharField(max_length=500)
     type = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    author_user_id = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
 
 class Issue(models.Model):
 
@@ -35,7 +35,6 @@ class Comment(models.Model):
 class Contributor(models.Model):
 
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    project_id = models.ForeignKey(Project, on_delete=models.CASCADE)
+    project_id = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     permission = models.CharField(max_length=255)
     role = models.CharField(max_length=255)
-    
