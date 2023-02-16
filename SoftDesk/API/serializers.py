@@ -42,7 +42,7 @@ class CreateUserProfileSerializer(ModelSerializer):
 
     def create(self, data):
         username = data["first_name"]+ "." + data["last_name"]
-        username = self.check_username(username, 0)
+        username = self.check_username(username, 1)
         
         user = User.objects.create_user(
             username, data["email"], data["password"]
@@ -55,9 +55,10 @@ class CreateUserProfileSerializer(ModelSerializer):
 
 
     def check_username(self, username, NextId):
-        if User.objects.filter(username=username).exists():
+        if User.objects.filter(username=username + str(NextId)).exists():
             NextId += 1
-            return self.check_username(username + str(NextId), NextId)
+            return self.check_username(username, NextId)
         
         else:
+            username += str(NextId)
             return username
