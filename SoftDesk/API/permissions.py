@@ -1,4 +1,5 @@
 from rest_framework import permissions
+from API.models import Project
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):

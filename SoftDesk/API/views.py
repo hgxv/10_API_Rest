@@ -7,6 +7,7 @@ from API.serializers import ProjectSerializer, ContributorsSerializer,\
 from API.models import Project, Contributor, Issue, Comment
 from API.permissions import IsOwnerOrReadOnly
 
+from django.utils import timezone
 
 class ProjectViewset(viewsets.ViewSet):
 
@@ -14,8 +15,15 @@ class ProjectViewset(viewsets.ViewSet):
 
     serializer_class = ProjectSerializer
 
-    def get_queryset(self):
-        return Project.objects.all()
+    def list(self, request):
+        queryset = Project.objects.all()
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
+
+    def retrieve(self, request, pk=None):
+        project = Project.objects.get(pk=pk)
+        serializer = self.serializer_class(project)
+        return Response(serializer.data)
 
     def create(self, request):
         serializer = ProjectSerializer(data=request.data)
@@ -39,13 +47,12 @@ class ProjectViewset(viewsets.ViewSet):
 
 class ContributorViewset(viewsets.ViewSet):
 
-    permission_classes = [permissions.IsAuthenticated, IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = ContributorsSerializer
 
     def list(self, request, project_pk):
-        project = Project.objects.filter(pk=project_pk)
-        queryset = Contributor.objects.get(project_id=project.id)
-        print(queryset)
+        project = Project.objects.get(pk=project_pk)
+        queryset = Contributor.objects.filter(project_id=project.id)
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
@@ -75,6 +82,24 @@ class IssueViewset(viewsets.ModelViewSet):
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
 
+    def create(self, request, project_pk):
+        project = Project.objects.get(pk=project_pk)
+        serializer = self.serializer_class(
+            data=request.data, context={'resquest': request}
+        )
+
+        if serializer.is_valid():
+            serializer.save(
+                project_id = project,
+                created_time = timezone.now()
+            )
+            return Response(serializer.data)
+
+        else:
+            return Response(serializer.errors)
+
+    def retrieve(self, request, project_pk=None):
+        pass
 
 class CommentViewset(viewsets.ModelViewSet):
 
