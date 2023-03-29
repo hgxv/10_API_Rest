@@ -5,23 +5,31 @@ from rest_framework.response import Response
 from API.serializers import ProjectSerializer, ContributorsSerializer,\
  IssueSerializer, CommentSerializer, CreateUserProfileSerializer
 from API.models import Project, Contributor, Issue, Comment
-from API.permissions import IsOwnerOrReadOnly
+from API.permissions import IsOwnerOrReadOnly, IsContributor
+from django.db.models import Q
 
 from django.utils import timezone
 
 class ProjectViewset(viewsets.ViewSet):
 
     permission_classes = [permissions.IsAuthenticated]
-
     serializer_class = ProjectSerializer
 
     def list(self, request):
-        queryset = Project.objects.all()
+        contributions = list(Contributor.objects.filter(user_id=request.user))
+        projects = [project.project_id.id for project in contributions]
+
+        queryset = Project.objects.filter(
+            Q(author_user_id=request.user) | Q(id__in=projects)
+        )
+
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
+    @permission_classes[IsContributor]
     def retrieve(self, request, pk=None):
         project = Project.objects.get(pk=pk)
+        self.check_object_permissions(request, request.user)
         serializer = self.serializer_class(project)
         return Response(serializer.data)
 
@@ -47,7 +55,7 @@ class ProjectViewset(viewsets.ViewSet):
 
 class ContributorViewset(viewsets.ViewSet):
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated & IsOwnerOrReadOnly]
     serializer_class = ContributorsSerializer
 
     def list(self, request, project_pk):
@@ -60,7 +68,7 @@ class ContributorViewset(viewsets.ViewSet):
         project = Project.objects.filter(pk=project_pk)
         serializer = self.serializer_class(
             data=request.data, context={'request': request}
-            )
+        )
 
         if serializer.is_valid():
             serializer.save(project_id=project[0])
@@ -70,7 +78,11 @@ class ContributorViewset(viewsets.ViewSet):
             return Response(serializer.errors)
     
     def destroy(self, request, project_pk, pk=None):
-        user = Contributor.objects.get(pk=pk)
+        user = Contributor.objects.get(
+            user_id=pk,
+            project_id=project_pk
+        )
+        self.check_object_permissions(request, user)
         user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
