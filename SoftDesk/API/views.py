@@ -12,7 +12,8 @@ from django.utils import timezone
 
 class ProjectViewset(viewsets.ViewSet):
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated,
+                        IsOwnerOrReadOnly, IsContributor]
     serializer_class = ProjectSerializer
 
     def list(self, request):
@@ -26,16 +27,14 @@ class ProjectViewset(viewsets.ViewSet):
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
-    @permission_classes[IsContributor]
     def retrieve(self, request, pk=None):
         project = Project.objects.get(pk=pk)
-        self.check_object_permissions(request, request.user)
+        self.check_object_permissions(request, project)
         serializer = self.serializer_class(project)
         return Response(serializer.data)
 
     def create(self, request):
         serializer = ProjectSerializer(data=request.data)
-
         if serializer.is_valid():
             serializer.save(author_user_id=request.user)
             return Response(serializer.data)
@@ -45,54 +44,65 @@ class ProjectViewset(viewsets.ViewSet):
         
     def partial_update(self, request, pk=None):
         project = Project.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
         project.update()
 
     def destroy(self, request, pk=None):
         project = Project.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
         project.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ContributorViewset(viewsets.ViewSet):
 
-    permission_classes = [permissions.IsAuthenticated & IsOwnerOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated,
+                        IsOwnerOrReadOnly, IsContributor]
     serializer_class = ContributorsSerializer
 
     def list(self, request, project_pk):
         project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
         queryset = Contributor.objects.filter(project_id=project.id)
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
     def create(self, request, project_pk):
-        project = Project.objects.filter(pk=project_pk)
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
         serializer = self.serializer_class(
             data=request.data, context={'request': request}
         )
-
         if serializer.is_valid():
-            serializer.save(project_id=project[0])
+            serializer.save(project_id=project)
             return Response(serializer.data)
 
         else:
             return Response(serializer.errors)
     
     def destroy(self, request, project_pk, pk=None):
-        user = Contributor.objects.get(
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        contribution = Contributor.objects.get(
             user_id=pk,
             project_id=project_pk
         )
-        self.check_object_permissions(request, user)
-        user.delete()
+        contribution.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class IssueViewset(viewsets.ModelViewSet):
 
-    permission_classes = [permissions.IsAuthenticated]
-
-    queryset = Issue.objects.all()
+    permission_classes = [permissions.IsAuthenticated,
+                        IsOwnerOrReadOnly, IsContributor]
     serializer_class = IssueSerializer
+
+    def list(self, request, project_pk):
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        queryset = Issue.objects.filter(project_id=project.id)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
 
     def create(self, request, project_pk):
         project = Project.objects.get(pk=project_pk)
