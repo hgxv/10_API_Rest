@@ -10,7 +10,7 @@ class ProjectAdmin(admin.ModelAdmin):
 
 class IssueAdmin(admin.ModelAdmin):
 
-    list_display = ('title', 'status', 'author_user_id', 'assignee_user_id')
+    list_display = ('project_id', 'title', 'status', 'author_user_id', 'assignee_user_id')
 
 
 class CommentAdmin(admin.ModelAdmin):

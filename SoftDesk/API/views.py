@@ -34,19 +34,39 @@ class ProjectViewset(viewsets.ViewSet):
         return Response(serializer.data)
 
     def create(self, request):
-        serializer = ProjectSerializer(data=request.data)
+        serializer = self.serializer_class(
+            data=request.data, context={'request': request}
+        )
         if serializer.is_valid():
             serializer.save(author_user_id=request.user)
             return Response(serializer.data)
         
         else:
             return Response(serializer.errors)
-        
+  
+    def update(self, request, pk=None):
+        project = Project.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            return self.perform_update(serializer)
+
+        else:
+            return Response(serializer.errors)
+
     def partial_update(self, request, pk=None):
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
-        project.update()
+        serializer = self.serializer_class(
+            data=request.data,
+            partial = True
+        )
+        if serializer.is_valid():
+            return self.perform_update(serializer.data)
 
+        else:
+            return Response(serializer.errors)
+        
     def destroy(self, request, pk=None):
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
@@ -95,6 +115,7 @@ class IssueViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
                         IsOwnerOrReadOnly, IsContributor]
+    queryset = Issue.objects.all()
     serializer_class = IssueSerializer
 
     def list(self, request, project_pk):
@@ -109,10 +130,11 @@ class IssueViewset(viewsets.ModelViewSet):
         serializer = self.serializer_class(
             data=request.data, context={'resquest': request}
         )
-
+        self.check_object_permissions(request, project)
         if serializer.is_valid():
             serializer.save(
                 project_id = project,
+                author_user_id = request.user,
                 created_time = timezone.now()
             )
             return Response(serializer.data)
@@ -120,15 +142,99 @@ class IssueViewset(viewsets.ModelViewSet):
         else:
             return Response(serializer.errors)
 
-    def retrieve(self, request, project_pk=None):
-        pass
+    def update(self, request, project_pk, pk=None):
+        project = Project.objects.get(pk=project_pk)
+        issue = Issue.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            return self.perform_update(serializer)
+
+        else:
+            return Response(serializer.errors)
+    def partial_update(self, request, project_pk, pk=None):
+        project = Project.objects.get(pk=project_pk)
+        issue = Issue.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
+        serializer = self.serializer_class(
+            data=request.data,
+            partial = True
+        )
+        if serializer.is_valid():
+            return self.perform_update(serializer)
+
+        else:
+            return Response(serializer.errors)
+        
+    def destroy(self, request, project_pk, pk=None):
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        issue = Issue.objects.filter(
+            pk=pk,
+            project_id=project_pk
+        )
+        issue.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class CommentViewset(viewsets.ModelViewSet):
 
-    permission_classes = [permissions.IsAuthenticated]
-
+    permission_classes = [IsOwnerOrReadOnly | IsContributor]
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
+
+    def list(self, request, project_pk, issues_pk):
+        issue = Issue.objects.get(pk=issues_pk)
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        queryset = Comment.objects.filter(issue_id=issue.id)
+        serializer = self.serializer_class(queryset, many=True)
+        return Response(serializer.data)
+
+    def create(self, request, project_pk, issues_pk):
+        issue = Issue.objects.get(pk=issues_pk)
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            serializer.save(
+                author_user_id = request.user,
+                issue_id = issue,
+                created_time = timezone.now()
+            )
+            return Response(serializer.data)
+
+        else:
+            return Response(serializer.errors)
+
+    def retrieve(self, request, project_pk, issues_pk, pk=None):
+        project = Project.objects.get(pk=project_pk)
+        comment = Comment.objects.get(pk=pk)
+        self.check_object_permissions(request, project)
+        serializer = self.serializer_class(comment)
+        return Response(serializer.data)
+
+    def partial_update(self, request, project_pk, issues_pk, pk=None):
+        comment = Comment.objects.get(pk=pk)
+        self.check_object_permissions(request, comment)
+        serializer = self.serializer_class(
+            instance=comment,
+            data=request.data,
+            partial = True
+        )
+        if serializer.is_valid():
+            return self.perform_update(serializer)
+
+        else:
+            return Response(serializer.errors)
+
+   
+    def destroy(self, request, project_pk, issues_pk, pk=None):
+        project = Project.objects.get(pk=project_pk)
+        self.check_object_permissions(request, project)
+        comment = Comment.objects.get(pk=pk)
+        comment.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SignupViewset(viewsets.ViewSet):

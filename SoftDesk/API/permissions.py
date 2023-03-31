@@ -15,7 +15,6 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # Instance must have an attribute named `id`.
         owner = obj.author_user_id.id
         return owner == request.user.id
     
@@ -24,16 +23,20 @@ class IsContributor(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
 
-        if view.action == "retrieve":
-            contribution = Contributor.objects.filter(
-                user_id=request.user,
-                project_id=obj
-            ).exists()
+        contribution = Contributor.objects.filter(
+            user_id=request.user,
+            project_id=obj
+        ).exists()
 
-            if (obj.author_user_id.id != request.user.id and
-                contribution == False):
-                
-                print(obj.author_user_id, " ", request.user.id)
-                return False
+        if (obj.author_user_id.id != request.user.id and
+            contribution == False):
+            
+            print(obj.author_user_id, " ", request.user.id)
+            return False
+        
+        if (view.action == "destroy" and
+            obj.author_user_id.id != request.user.id):
+            
+            return False
         
         return True

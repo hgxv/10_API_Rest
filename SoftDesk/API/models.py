@@ -16,9 +16,9 @@ class Issue(models.Model):
     description = models.CharField(max_length=255)
     tag = models.CharField(max_length=255)
     priority = models.CharField(max_length=255)
-    project_id = models.ForeignKey(Project, on_delete=models.CASCADE)
+    project_id = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     status = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name="author")
+    author_user_id = models.ForeignKey(User, null=True, on_delete=models.CASCADE, related_name="author")
     assignee_user_id = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignee")
     created_time = models.DateTimeField(null=True)
 
@@ -26,9 +26,9 @@ class Issue(models.Model):
 class Comment(models.Model):
     
     description = models.CharField(max_length=255)
-    author_user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    issue_id = models.ForeignKey(Issue, on_delete=models.CASCADE)
-    created_time = models.DateTimeField(auto_now_add=True)
+    author_user_id = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    issue_id = models.ForeignKey(Issue, null=True, on_delete=models.CASCADE)
+    created_time = models.DateTimeField(null=True)
 
 
 class Contributor(models.Model):
