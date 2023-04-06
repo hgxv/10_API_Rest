@@ -19,11 +19,9 @@ class ProjectViewset(viewsets.ViewSet):
     def list(self, request):
         contributions = list(Contributor.objects.filter(user_id=request.user))
         projects = [project.project_id.id for project in contributions]
-
         queryset = Project.objects.filter(
             Q(author_user_id=request.user) | Q(id__in=projects)
         )
-
         serializer = self.serializer_class(queryset, many=True)
         return Response(serializer.data)
 
@@ -47,14 +45,16 @@ class ProjectViewset(viewsets.ViewSet):
     def update(self, request, pk=None):
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, partial=True)
         if serializer.is_valid():
-            return self.perform_update(serializer)
+            self.update(serializer.data)
+            return Response(serializer.data)
 
         else:
             return Response(serializer.errors)
 
     def partial_update(self, request, pk=None):
+
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
@@ -62,7 +62,7 @@ class ProjectViewset(viewsets.ViewSet):
             partial = True
         )
         if serializer.is_valid():
-            return self.perform_update(serializer.data)
+            return self.update(serializer.data)
 
         else:
             return Response(serializer.errors)
@@ -94,6 +94,13 @@ class ContributorViewset(viewsets.ViewSet):
             data=request.data, context={'request': request}
         )
         if serializer.is_valid():
+            contribution = Contributor.objects.filter(
+                user_id=serializer.user_id,
+                project_id=serializer.project_id
+            ).exists()
+            if contribution:
+                return Response(status=status.HTTP_403_FORBIDDEN)
+            
             serializer.save(project_id=project)
             return Response(serializer.data)
 
@@ -144,17 +151,16 @@ class IssueViewset(viewsets.ModelViewSet):
 
     def update(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
-        issue = Issue.objects.get(pk=pk)
         self.check_object_permissions(request, project)
-        serializer = self.serializer_class(data=request.data)
+        serializer = self.serializer_class(data=request.data, partial=True)
         if serializer.is_valid():
             return self.perform_update(serializer)
 
         else:
             return Response(serializer.errors)
+        
     def partial_update(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
-        issue = Issue.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
             data=request.data,

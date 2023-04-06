@@ -15,8 +15,8 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        owner = obj.author_user_id.id
-        return owner == request.user.id
+        owner = obj.author_user_id
+        return owner == request.user
     
 
 class IsContributor(permissions.BasePermission):
@@ -28,15 +28,13 @@ class IsContributor(permissions.BasePermission):
             project_id=obj
         ).exists()
 
-        if (obj.author_user_id.id != request.user.id and
+        if (obj.author_user_id != request.user and
             contribution == False):
             
-            print(obj.author_user_id, " ", request.user.id)
             return False
         
         if (view.action == "destroy" and
             obj.author_user_id.id != request.user.id):
-            
             return False
         
         return True
