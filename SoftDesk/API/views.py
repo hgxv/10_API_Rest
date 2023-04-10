@@ -10,10 +10,11 @@ from django.db.models import Q
 
 from django.utils import timezone
 
-class ProjectViewset(viewsets.ViewSet):
+class ProjectViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
                         IsOwnerOrReadOnly, IsContributor]
+    queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
     def list(self, request):
@@ -41,28 +42,18 @@ class ProjectViewset(viewsets.ViewSet):
         
         else:
             return Response(serializer.errors)
-  
-    def update(self, request, pk=None):
-        project = Project.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(data=request.data, partial=True)
-        if serializer.is_valid():
-            self.update(serializer.data)
-            return Response(serializer.data)
-
-        else:
-            return Response(serializer.errors)
 
     def partial_update(self, request, pk=None):
 
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
+            instance = project,
             data=request.data,
-            partial = True
-        )
+            partial=True)
+        
         if serializer.is_valid():
-            return self.update(serializer.data)
+            return self.perform_update(serializer.data)
 
         else:
             return Response(serializer.errors)
@@ -74,7 +65,7 @@ class ProjectViewset(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ContributorViewset(viewsets.ViewSet):
+class ContributorViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
                         IsOwnerOrReadOnly, IsContributor]
@@ -95,8 +86,8 @@ class ContributorViewset(viewsets.ViewSet):
         )
         if serializer.is_valid():
             contribution = Contributor.objects.filter(
-                user_id=serializer.user_id,
-                project_id=serializer.project_id
+                user_id=serializer.validated_data["user_id"],
+                project_id=project
             ).exists()
             if contribution:
                 return Response(status=status.HTTP_403_FORBIDDEN)
@@ -148,24 +139,16 @@ class IssueViewset(viewsets.ModelViewSet):
 
         else:
             return Response(serializer.errors)
-
-    def update(self, request, project_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(data=request.data, partial=True)
-        if serializer.is_valid():
-            return self.perform_update(serializer)
-
-        else:
-            return Response(serializer.errors)
         
     def partial_update(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
+        issue = Issue.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
-            data=request.data,
-            partial = True
-        )
+            instance = issue,
+            data=request.data, 
+            partial=True)
+        
         if serializer.is_valid():
             return self.perform_update(serializer)
 
@@ -185,7 +168,8 @@ class IssueViewset(viewsets.ModelViewSet):
 
 class CommentViewset(viewsets.ModelViewSet):
 
-    permission_classes = [IsOwnerOrReadOnly | IsContributor]
+    permission_classes = [permissions.IsAuthenticated,
+                        IsOwnerOrReadOnly, IsContributor]
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
 
@@ -236,9 +220,8 @@ class CommentViewset(viewsets.ModelViewSet):
 
    
     def destroy(self, request, project_pk, issues_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        self.check_object_permissions(request, project)
         comment = Comment.objects.get(pk=pk)
+        self.check_object_permissions(request, comment)
         comment.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

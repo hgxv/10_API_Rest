@@ -33,7 +33,7 @@ class Comment(models.Model):
 
 class Contributor(models.Model):
 
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    user_id = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
     project_id = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     permission = models.CharField(max_length=255)
     role = models.CharField(max_length=255)
