@@ -17,7 +17,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
 
         owner = obj.author_user_id
         return owner == request.user
-    
+
 
 class IsContributor(permissions.BasePermission):
 
@@ -29,8 +29,7 @@ class IsContributor(permissions.BasePermission):
                 project_id=obj
             ).exists()
 
-        if (obj.author_user_id == request.user or
-            contribution == True):
+        if (obj.author_user_id == request.user or contribution):
             return True
-        
+
         return False

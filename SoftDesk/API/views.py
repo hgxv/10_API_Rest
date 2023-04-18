@@ -1,4 +1,3 @@
-from django.contrib.auth.models import User
 from rest_framework import permissions, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -10,10 +9,11 @@ from django.db.models import Q
 
 from django.utils import timezone
 
+
 class ProjectViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
-                        IsOwnerOrReadOnly, IsContributor]
+                          IsOwnerOrReadOnly, IsContributor]
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
 
@@ -39,7 +39,7 @@ class ProjectViewset(viewsets.ModelViewSet):
         if serializer.is_valid():
             serializer.save(author_user_id=request.user)
             return Response(serializer.data)
-        
+
         else:
             return Response(serializer.errors)
 
@@ -48,16 +48,16 @@ class ProjectViewset(viewsets.ModelViewSet):
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
-            instance = project,
+            instance=project,
             data=request.data,
             partial=True)
-        
+
         if serializer.is_valid():
             return self.perform_update(serializer.data)
 
         else:
             return Response(serializer.errors)
-        
+
     def destroy(self, request, pk=None):
         project = Project.objects.get(pk=pk)
         self.check_object_permissions(request, project)
@@ -68,7 +68,7 @@ class ProjectViewset(viewsets.ModelViewSet):
 class ContributorViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
-                        IsOwnerOrReadOnly, IsContributor]
+                          IsOwnerOrReadOnly, IsContributor]
     serializer_class = ContributorsSerializer
 
     def list(self, request, project_pk):
@@ -91,13 +91,13 @@ class ContributorViewset(viewsets.ModelViewSet):
             ).exists()
             if contribution:
                 return Response(status=status.HTTP_403_FORBIDDEN)
-            
+
             serializer.save(project_id=project)
             return Response(serializer.data)
 
         else:
             return Response(serializer.errors)
-    
+
     def destroy(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
         self.check_object_permissions(request, project)
@@ -112,7 +112,7 @@ class ContributorViewset(viewsets.ModelViewSet):
 class IssueViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
-                        IsOwnerOrReadOnly, IsContributor]
+                          IsOwnerOrReadOnly, IsContributor]
     queryset = Issue.objects.all()
     serializer_class = IssueSerializer
 
@@ -131,30 +131,30 @@ class IssueViewset(viewsets.ModelViewSet):
         self.check_object_permissions(request, project)
         if serializer.is_valid():
             serializer.save(
-                project_id = project,
-                author_user_id = request.user,
-                created_time = timezone.now()
+                project_id=project,
+                author_user_id=request.user,
+                created_time=timezone.now()
             )
             return Response(serializer.data)
 
         else:
             return Response(serializer.errors)
-        
+
     def partial_update(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
         issue = Issue.objects.get(pk=pk)
         self.check_object_permissions(request, project)
         serializer = self.serializer_class(
-            instance = issue,
-            data=request.data, 
+            instance=issue,
+            data=request.data,
             partial=True)
-        
+
         if serializer.is_valid():
             return self.perform_update(serializer)
 
         else:
             return Response(serializer.errors)
-        
+
     def destroy(self, request, project_pk, pk=None):
         project = Project.objects.get(pk=project_pk)
         self.check_object_permissions(request, project)
@@ -169,7 +169,7 @@ class IssueViewset(viewsets.ModelViewSet):
 class CommentViewset(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated,
-                        IsOwnerOrReadOnly, IsContributor]
+                          IsOwnerOrReadOnly, IsContributor]
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
 
@@ -188,9 +188,9 @@ class CommentViewset(viewsets.ModelViewSet):
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save(
-                author_user_id = request.user,
-                issue_id = issue,
-                created_time = timezone.now()
+                author_user_id=request.user,
+                issue_id=issue,
+                created_time=timezone.now()
             )
             return Response(serializer.data)
 
@@ -210,7 +210,7 @@ class CommentViewset(viewsets.ModelViewSet):
         serializer = self.serializer_class(
             instance=comment,
             data=request.data,
-            partial = True
+            partial=True
         )
         if serializer.is_valid():
             return self.perform_update(serializer)
@@ -218,7 +218,6 @@ class CommentViewset(viewsets.ModelViewSet):
         else:
             return Response(serializer.errors)
 
-   
     def destroy(self, request, project_pk, issues_pk, pk=None):
         comment = Comment.objects.get(pk=pk)
         self.check_object_permissions(request, comment)
@@ -230,7 +229,7 @@ class SignupViewset(viewsets.ViewSet):
 
     @action(detail=False, methods=["POST"])
     def signup(self, request):
-        
+
         serializer = CreateUserProfileSerializer(data=request.data)
 
         if serializer.is_valid():

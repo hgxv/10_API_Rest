@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from rest_framework.serializers import ModelSerializer
-from rest_framework_nested.serializers import NestedHyperlinkedModelSerializer
 
 from API.models import Project, Issue, Comment, Contributor
 
@@ -17,8 +16,8 @@ class ContributorsSerializer(ModelSerializer):
     class Meta:
         model = Contributor
         fields = '__all__'
-        
-        
+
+
 class IssueSerializer(ModelSerializer):
 
     class Meta:
@@ -39,11 +38,10 @@ class CreateUserProfileSerializer(ModelSerializer):
         model = User
         fields = ['id', 'first_name', 'last_name', 'email', 'password']
 
-
     def create(self, data):
-        username = data["first_name"]+ "." + data["last_name"]
+        username = data["first_name"] + "." + data["last_name"]
         username = self.check_username(username, 1)
-        
+
         user = User.objects.create_user(
             username, data["email"], data["password"]
         )
@@ -53,12 +51,11 @@ class CreateUserProfileSerializer(ModelSerializer):
         user.save()
         return user
 
-
     def check_username(self, username, NextId):
         if User.objects.filter(username=username + str(NextId)).exists():
             NextId += 1
             return self.check_username(username, NextId)
-        
+
         else:
             username += str(NextId)
             return username

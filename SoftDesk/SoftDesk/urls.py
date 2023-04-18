@@ -12,11 +12,20 @@ router = routers.SimpleRouter()
 router.register("projects", ProjectViewset, basename='projects')
 router.register("", SignupViewset, basename="signup")
 
-project_router = routers.NestedSimpleRouter(router, "projects", lookup="project")
+project_router = routers.NestedSimpleRouter(
+        router,
+        "projects",
+        lookup="project"
+    )
+
 project_router.register("users", ContributorViewset, basename='user')
 project_router.register("issues", IssueViewset, basename='issue')
 
-issues_router = routers.NestedSimpleRouter(project_router, "issues", lookup="issues")
+issues_router = routers.NestedSimpleRouter(
+        project_router,
+        "issues",
+        lookup="issues"
+    )
 issues_router.register("comments", CommentViewset, basename="comment")
 
 # Wire up our API using automatic URL routing.
