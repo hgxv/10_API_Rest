@@ -1,29 +1,29 @@
 # 10_API_Rest
 
-# Clonage du projet
+# Clone Project
 git clone https://github.com/hgxv/10_API_Rest.git
 
-# On se déplace dans le projet
+# Move to project's directory
 cd SoftDesk
 
-# Création de l'environnement virtuel
+# Create virtual environment
 py -m venv env
 
-# Activation de l'environnement virtuel
-      # Pour windows:
+# Activate virtual environment
+      # For windows:
       env\scripts\activate
       
-      #Pour Linux:
+      # For Linux:
       source bin/env/activate
 
-# Installation des dépendances
+# Install dependencies
 py -m pip install -r requirements.txt
 
-# On se déplace dans l'application
+# Move to the app's directory
 cd SoftDesk
 
-# Lancement du serveur virtuel
+# Launch app's virtual server
 py manage.py runserver
 
-Suivez la documentation Postman pour plus d'informations.
+Follow Postman documentation :
 https://documenter.getpostman.com/view/24628441/2s93XzyhzQ#0ba05a29-25cb-4734-b561-3953e4db1684
