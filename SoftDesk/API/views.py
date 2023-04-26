@@ -255,7 +255,7 @@ class CommentViewset(viewsets.ModelViewSet):
         except:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    def partial_update(self, request, project_pk, issues_pk, pk=None):
+    def update(self, request, project_pk, issues_pk, pk=None):
         try:
             comment = Comment.objects.get(pk=pk)
             self.check_object_permissions(request, comment)
@@ -265,7 +265,8 @@ class CommentViewset(viewsets.ModelViewSet):
                 partial=True
             )
             if serializer.is_valid():
-                return self.perform_update(serializer)
+                self.perform_update(serializer)
+                return Response(serializer.data)
 
             else:
                 return Response(serializer.errors)
