@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from API.serializers import ProjectSerializer, ContributorsSerializer,\
  IssueSerializer, CommentSerializer, CreateUserProfileSerializer
-from API.models import Project, Contributor, Issue, Comment
+from API.models import Project, Contributor, Issue, Comment, User
 from API.permissions import IsOwnerOrReadOnly, IsContributor
 from django.db.models import Q
 
@@ -27,10 +27,15 @@ class ProjectViewset(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def retrieve(self, request, pk=None):
-        project = Project.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(project)
-        return Response(serializer.data)
+        try:
+            project = Project.objects.get(pk=pk)
+            self.check_object_permissions(request, project)
+            serializer = self.serializer_class(project)
+            return Response(serializer.data)
+        
+        except Project.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
     def create(self, request):
         serializer = self.serializer_class(
@@ -43,26 +48,34 @@ class ProjectViewset(viewsets.ModelViewSet):
         else:
             return Response(serializer.errors)
 
-    def partial_update(self, request, pk=None):
+    def update(self, request, pk=None):
+        try:
+            project = Project.objects.get(pk=pk)
+            self.check_object_permissions(request, project)
+            serializer = self.serializer_class(
+                instance=project,
+                data=request.data,
+                partial=True)
 
-        project = Project.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(
-            instance=project,
-            data=request.data,
-            partial=True)
+            if serializer.is_valid():
+                self.perform_update(serializer)
+                return Response(serializer.data)
 
-        if serializer.is_valid():
-            return self.perform_update(serializer.data)
-
-        else:
-            return Response(serializer.errors)
+            else:
+                return Response(serializer.errors)
+            
+        except Project.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, pk=None):
-        project = Project.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        project.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            project = Project.objects.get(pk=pk)
+            self.check_object_permissions(request, project)
+            project.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except Project.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class ContributorViewset(viewsets.ModelViewSet):
@@ -99,14 +112,18 @@ class ContributorViewset(viewsets.ModelViewSet):
             return Response(serializer.errors)
 
     def destroy(self, request, project_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        self.check_object_permissions(request, project)
-        contribution = Contributor.objects.get(
-            user_id=pk,
-            project_id=project_pk
-        )
-        contribution.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            project = Project.objects.get(pk=project_pk)
+            self.check_object_permissions(request, project)
+            contribution = Contributor.objects.get(
+                user_id=pk,
+                project_id=project_pk
+            )
+            contribution.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except Contributor.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class IssueViewset(viewsets.ModelViewSet):
@@ -130,40 +147,70 @@ class IssueViewset(viewsets.ModelViewSet):
         )
         self.check_object_permissions(request, project)
         if serializer.is_valid():
-            serializer.save(
-                project_id=project,
-                author_user_id=request.user,
-                created_time=timezone.now()
-            )
-            return Response(serializer.data)
+            user = serializer.validated_data["assignee_user_id"]
+            contribution = Contributor.objects.filter(
+                user_id=user,
+                project_id=project
+            ).exists()
+
+            if contribution or user == request.user:
+                serializer.save(
+                    project_id=project,
+                    author_user_id=request.user,
+                    created_time=timezone.now()
+                )
+                return Response(serializer.data)
+            
+            else:
+                return Response(status=status.HTTP_403_FORBIDDEN)
 
         else:
             return Response(serializer.errors)
 
-    def partial_update(self, request, project_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        issue = Issue.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(
-            instance=issue,
-            data=request.data,
-            partial=True)
+    def update(self, request, project_pk, pk=None):
+        try:
+            project = Project.objects.get(pk=project_pk)
+            issue = Issue.objects.get(pk=pk)
+            self.check_object_permissions(request, project)
+            serializer = self.serializer_class(
+                instance=issue,
+                data=request.data,
+                partial=True
+                )
 
-        if serializer.is_valid():
-            return self.perform_update(serializer)
+            if serializer.is_valid():
+                user = serializer.validated_data["assignee_user_id"]
+                contribution = Contributor.objects.filter(
+                    user_id=user,
+                    project_id=project
+                ).exists()
+                if contribution or user == request.user:
+                    self.perform_update(serializer)
+                    return Response(serializer.data)
+                
+                else:
+                    return Response(status=status.HTTP_403_FORBIDDEN)
 
-        else:
-            return Response(serializer.errors)
+            else:
+                return Response(serializer.errors)
+        
+        except Issue.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
 
     def destroy(self, request, project_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        self.check_object_permissions(request, project)
-        issue = Issue.objects.filter(
-            pk=pk,
-            project_id=project_pk
-        )
-        issue.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            project = Project.objects.get(pk=project_pk)
+            self.check_object_permissions(request, project)
+            issue = Issue.objects.filter(
+                pk=pk,
+                project_id=project_pk
+            )
+            issue.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except Issue.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class CommentViewset(viewsets.ModelViewSet):
@@ -198,31 +245,43 @@ class CommentViewset(viewsets.ModelViewSet):
             return Response(serializer.errors)
 
     def retrieve(self, request, project_pk, issues_pk, pk=None):
-        project = Project.objects.get(pk=project_pk)
-        comment = Comment.objects.get(pk=pk)
-        self.check_object_permissions(request, project)
-        serializer = self.serializer_class(comment)
-        return Response(serializer.data)
+        try:
+            project = Project.objects.get(pk=project_pk)
+            comment = Comment.objects.get(pk=pk)
+            self.check_object_permissions(request, project)
+            serializer = self.serializer_class(comment)
+            return Response(serializer.data)
+        
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     def partial_update(self, request, project_pk, issues_pk, pk=None):
-        comment = Comment.objects.get(pk=pk)
-        self.check_object_permissions(request, comment)
-        serializer = self.serializer_class(
-            instance=comment,
-            data=request.data,
-            partial=True
-        )
-        if serializer.is_valid():
-            return self.perform_update(serializer)
+        try:
+            comment = Comment.objects.get(pk=pk)
+            self.check_object_permissions(request, comment)
+            serializer = self.serializer_class(
+                instance=comment,
+                data=request.data,
+                partial=True
+            )
+            if serializer.is_valid():
+                return self.perform_update(serializer)
 
-        else:
-            return Response(serializer.errors)
+            else:
+                return Response(serializer.errors)
+        
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
     def destroy(self, request, project_pk, issues_pk, pk=None):
-        comment = Comment.objects.get(pk=pk)
-        self.check_object_permissions(request, comment)
-        comment.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        try:
+            comment = Comment.objects.get(pk=pk)
+            self.check_object_permissions(request, comment)
+            comment.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        
+        except:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
 class SignupViewset(viewsets.ViewSet):
